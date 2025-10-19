@@ -18,3 +18,13 @@ google-services.json
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
+
+# Build output
+build/
+.dart_tool/
+
+# IDE and system clutter
+.idea/
+*.iml
+*.log
+*.DS_Store
