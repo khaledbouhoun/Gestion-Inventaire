@@ -108,4 +108,14 @@ class InventairedModel {
         "${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}:${date.second.toString().padLeft(2, '0')}Z";
     return formattedDate;
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+
+    return other is InventairedModel && other.iNDART == iNDART && other.iNDNO == iNDNO;
+  }
+
+  @override
+  int get hashCode => iNDART.hashCode ^ iNDNO.hashCode;
 }

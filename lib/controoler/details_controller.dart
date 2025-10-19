@@ -13,6 +13,7 @@ import 'package:invontar/data/model/inventaired.dart';
 import 'package:invontar/data/model/inventaireentete_model.dart';
 import 'package:invontar/data/model/settings_model.dart';
 import 'package:invontar/data/model/user_model.dart';
+import 'package:invontar/view/screen/home.dart';
 import 'package:invontar/view/screen/login.dart';
 
 class DetailsController extends GetxController {
@@ -53,6 +54,7 @@ class DetailsController extends GetxController {
   RxBool isSaving = false.obs;
 
   bool updateMethode = false;
+  bool userupdateMethode = false;
 
   // ========== Initialization ==========
   @override
@@ -67,9 +69,9 @@ class DetailsController extends GetxController {
       // Get arguments from navigation
       final args = Get.arguments;
       if (args != null) {
-        user = args['user'];
-        dossier = args['dossier'];
-        exercice = args['exercice'];
+        user = homeController.user;
+        dossier = homeController.dossier;
+        exercice = homeController.exercice;
         inventaire = args['inventaire'];
         buySettings = homeController.buySettings;
         sellSettings = homeController.sellSettings;
@@ -126,7 +128,6 @@ class DetailsController extends GetxController {
           }
         }
         //,
-        print('✅ Loaded ${inventaireDetaileList.length} inventory items');
       } else {
         inventaireDetaileList = [];
       }
@@ -152,23 +153,16 @@ class DetailsController extends GetxController {
       longController.clear();
       largController.clear();
     } else {
-      updateMethode = true;
       InventairedModel inventaireDetaileListFirst = inventaireDetaileList.firstWhere((e) => e.iNDART == article.artno);
+      if (inventaireDetaileList.where((e) => e.iNDART == article.artno).isEmpty) {
+      updateMethode = true;
       quantityController.text = inventaireDetaileListFirst.iNDQTEINV.toString();
       longController.text = inventaireDetaileListFirst.iNDLONG.toString();
       largController.text = inventaireDetaileListFirst.iNDLARG.toString();
     }
+    }
+
     update();
-
-    // _showSuccessSnackbar('Article selected: ${article.artnom}');
-    _logArticleSelection(article);
-  }
-
-  void _logArticleSelection(ArticlesModel article) {
-    debugPrint('✅ Article Selected:');
-    debugPrint('   Name: ${article.artnom}');
-    debugPrint('   Code: ${article.artno}');
-    debugPrint('   Reference: ${article.artref ?? 'N/A'}');
   }
 
   /// Clear the selected article and reset form
@@ -443,6 +437,28 @@ class DetailsController extends GetxController {
 
   Future<void> _submitInventoryItem() async {
     Map<String, dynamic> data = {};
+    // Verify that the inventory header is not closed or removed
+
+    bool inventaireStillOpen = false;
+    await homeController.fetchInventaireEntete().then((s) {
+      inventaireStillOpen = homeController.inventaireentetelist.any(
+        (inv) => (inv.ineno == inventaire!.ineno) && (inv.inedate == inventaire!.inedate),
+      );
+    });
+
+    if (!inventaireStillOpen) {
+      print("⚠️ This inventory is closing...");
+      _showInfoSnackbar("This inventory is closing");
+      Get.offAll(() {
+        Get.delete<HomeController>(); // حذف أي نسخة قديمة
+        return Home();
+      });
+
+      return; // ⛔ مهم لإيقاف الدالة هنا
+    }
+
+    // ✅ الجرد مازال مفتوحاً، أكمل العملية هنا...
+
     if (updateMethode) {
       InventairedModel inventairedModel = inventaireDetaileList.firstWhere((element) => element.iNDART == selectedArticle.value!.artno);
       inventairedModel.iNDLONG = double.parse(longController.text);

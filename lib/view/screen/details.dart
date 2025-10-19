@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -8,6 +10,9 @@ import 'package:invontar/data/model/inventaired.dart';
 
 class Details extends StatelessWidget {
   const Details({super.key});
+
+  // final GlobalKey _listTargetKey = GlobalKey();
+  // final GlobalKey _cardStartKey = GlobalKey();
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +30,10 @@ class Details extends StatelessWidget {
               'Inventory #${controller.inventaire?.ineno ?? ''}',
               style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColor.primaryColor),
             ),
-            iconTheme: const IconThemeData(color: AppColor.primaryColor),
+            leading: IconButton(
+              onPressed: () => Get.back(),
+              icon: Icon(Icons.arrow_back_ios_new, color: AppColor.primaryColor),
+            ),
           ),
           body: SafeArea(
             child: Center(
@@ -44,7 +52,7 @@ class Details extends StatelessWidget {
                         },
                         child: SingleChildScrollView(
                           controller: controller.scrollController,
-                          key: ValueKey(controller.inventaireDetaileList.isEmpty ? 'empty' : 'content'),
+                          // key: ValueKey(controller.inventaireDetaileList.isEmpty ? 'empty' : 'content'),
                           padding: const EdgeInsets.all(16),
                           physics: const BouncingScrollPhysics(),
                           child: Column(
@@ -56,9 +64,9 @@ class Details extends StatelessWidget {
                               controller.inventaireDetaileList.isEmpty
                                   ? _buildEmptyState(context, controller)
                                   : ListView.builder(
+                                      // key: _listTargetKey,
                                       itemBuilder: (_, index) {
-                                        final item = controller.inventaireDetaileList[index];
-                                        return InventairedWidget(item: item);
+                                        return InventairedWidget(item: controller.inventaireDetaileList[index]);
                                       },
                                       itemCount: controller.inventaireDetaileList.length,
                                       shrinkWrap: true,
@@ -190,51 +198,62 @@ class Details extends StatelessWidget {
     );
   }
 
-  void _handleSaveWithAnimation(BuildContext context, DetailsController controller, {required GlobalKey targetKey}) {
-    if (controller.selectedArticle.value == null) return;
+  // void _handleSaveWithAnimation(
+  //   BuildContext context,
+  //   DetailsController controller, {
+  //   required GlobalKey startKey,
+  //   required GlobalKey endKey,
+  // }) async {
+  //   if (controller.selectedArticle.value == null) return;
 
-    // Create the new inventory item preview
-    final newItem = InventairedModel(
-      iNDART: controller.selectedArticle.value?.artno,
-      iNDQTEINV: double.tryParse(controller.quantityController.text.isEmpty ? '0' : controller.quantityController.text),
-      iNDLONG: double.tryParse(controller.longController.text.isEmpty ? '0' : controller.longController.text),
-      iNDLARG: double.tryParse(controller.largController.text.isEmpty ? '0' : controller.largController.text),
-      iNDDH: DateTime.now(),
-    );
+  //   final newItem = InventairedModel(
+  //     iNDART: controller.selectedArticle.value?.artno,
+  //     iNDQTEINV: double.tryParse(controller.quantityController.text.isEmpty ? '0' : controller.quantityController.text),
+  //     iNDLONG: double.tryParse(controller.longController.text.isEmpty ? '0' : controller.longController.text),
+  //     iNDLARG: double.tryParse(controller.largController.text.isEmpty ? '0' : controller.largController.text),
+  //     iNDDH: DateTime.now(),
+  //   );
 
-    // Find the target widget's position
-    final RenderBox? targetBox = targetKey.currentContext?.findRenderObject() as RenderBox?;
-    if (targetBox == null) {
-      controller.saveInventoryItem();
-      return;
-    }
+  //   final RenderBox? startBox = startKey.currentContext?.findRenderObject() as RenderBox?;
+  //   final RenderBox? endBox = endKey.currentContext?.findRenderObject() as RenderBox?;
 
-    final targetPosition = targetBox.localToGlobal(Offset.zero);
-    final targetSize = targetBox.size;
+  //   if (startBox == null || endBox == null) {
+  //     controller.saveInventoryItem();
+  //     return;
+  //   }
 
-    // Create overlay for animation
-    final overlayState = Overlay.of(context);
-    late OverlayEntry overlayEntry;
+  //   print("---------------------------------------0");
+  //   final startPos = startBox.localToGlobal(Offset.zero);
+  //   final endPos = endBox.localToGlobal(Offset.zero);
 
-    overlayEntry = OverlayEntry(
-      builder: (context) => _AnimatedCardTransform(
-        startPosition: targetPosition,
-        startSize: targetSize,
-        item: newItem,
-        onComplete: () {
-          overlayEntry.remove();
-          controller.saveInventoryItem();
-        },
-      ),
-    );
+  //   final overlay = Overlay.of(context);
+  //   late OverlayEntry entry;
 
-    overlayState.insert(overlayEntry);
-  }
+  //   entry = OverlayEntry(
+  //     builder: (_) => _AnimatedCardFly(
+  //       startPosition: startPos,
+  //       endPosition: endPos,
+  //       startSize: startBox.size,
+  //       item: newItem,
+  //       onComplete: () async {
+  //         print("---------------------------------------1");
+
+  //         entry.remove();
+  //       },
+  //     ),
+  //   );
+  //   print("---------------------------------------2");
+  //   await controller.saveInventoryItem();
+  //   if (controller.isSaving.value == false) {
+  //     overlay.insert(entry);
+  //   }
+  //   print("---------------------------------------3");
+  // }
 
   Widget _buildSelectedArticleCard(DetailsController controller) {
     return Container(
       margin: EdgeInsets.symmetric(vertical: 30),
-      key: ValueKey(controller.selectedArticle.value?.artno),
+      // key: _cardStartKey, // 👈 هنا
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: AppColor.white,
@@ -350,9 +369,11 @@ class Details extends StatelessWidget {
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed: () {
-                  final GlobalKey targetKey = GlobalKey(); // Create a proper GlobalKey
-                  _handleSaveWithAnimation(context, controller, targetKey: targetKey);
+                onPressed: () async {
+                  // _handleSaveWithAnimation(context, controller, startKey: _cardStartKey, endKey: _listTargetKey);
+                  await controller.saveInventoryItem();
+                  controller.clearSelection();
+                  await controller.fetchInventaired();
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColor.primaryColor,
@@ -408,132 +429,102 @@ class Details extends StatelessWidget {
       ),
     );
   }
-
-  Widget _buildActionButton({required String label, required IconData icon, required VoidCallback onPressed}) {
-    return SizedBox(
-      height: 56,
-      child: ElevatedButton.icon(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColor.primaryColor,
-          foregroundColor: AppColor.white,
-          elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        ),
-        icon: Icon(icon, size: 22),
-        label: Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-      ),
-    );
-  }
-
-  Widget _buildIconButton({required IconData icon, required VoidCallback onPressed}) {
-    return SizedBox(
-      width: 56,
-      height: 56,
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColor.primaryColor,
-          foregroundColor: AppColor.white,
-          elevation: 0,
-          padding: EdgeInsets.zero,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        ),
-        child: Icon(icon, size: 24),
-      ),
-    );
-  }
 }
 
-// Animation Widget
-class _AnimatedCardTransform extends StatefulWidget {
-  final Offset startPosition;
-  final Size startSize;
-  final InventairedModel item;
-  final VoidCallback onComplete;
+// // Animation Widget
+// class _AnimatedCardFly extends StatefulWidget {
+//   final Offset startPosition;
+//   final Offset endPosition;
+//   final Size startSize;
+//   final InventairedModel item;
+//   final VoidCallback onComplete;
 
-  const _AnimatedCardTransform({required this.startPosition, required this.startSize, required this.item, required this.onComplete});
+//   const _AnimatedCardFly({
+//     required this.startPosition,
+//     required this.endPosition,
+//     required this.startSize,
+//     required this.item,
+//     required this.onComplete,
+//   });
 
-  @override
-  State<_AnimatedCardTransform> createState() => _AnimatedCardTransformState();
-}
+//   @override
+//   State<_AnimatedCardFly> createState() => _AnimatedCardFlyState();
+// }
 
-class _AnimatedCardTransformState extends State<_AnimatedCardTransform> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
+// class _AnimatedCardFlyState extends State<_AnimatedCardFly> with SingleTickerProviderStateMixin {
+//   late AnimationController _controller;
+//   late Animation<Offset> _positionAnimation;
+//   late Animation<double> _scaleAnimation;
+//   late Animation<double> _fadeAnimation;
+//   @override
+//   void initState() {
+//     super.initState();
+//     _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
 
-  @override
-  void initState() {
-    super.initState();
+//     _positionAnimation = Tween<Offset>(
+//       begin: widget.startPosition,
+//       end: widget.endPosition,
+//     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOutCubic));
 
-    _controller = AnimationController(duration: const Duration(milliseconds: 600), vsync: this);
+//     _scaleAnimation = Tween<double>(begin: 1.0, end: 0.4).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
 
-    // Scale animation: shrink slightly then grow
-    _scaleAnimation = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween<double>(begin: 1.0, end: 0.95).chain(CurveTween(curve: Curves.easeInOut)), weight: 30),
-      TweenSequenceItem(tween: Tween<double>(begin: 0.95, end: 1.0).chain(CurveTween(curve: Curves.easeOutBack)), weight: 70),
-    ]).animate(_controller);
+//     _fadeAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
 
-    // Fade animation: fade out old content, fade in new
-    _fadeAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.0, 0.5, curve: Curves.easeIn),
-      ),
-    );
+//     _controller.forward().then((_) => widget.onComplete());
+//   }
 
-    // Slide animation: move down to list position
-    _slideAnimation = Tween<Offset>(
-      begin: Offset.zero,
-      end: const Offset(0, 0.3),
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOutCubic));
+//   @override
+//   void dispose() {
+//     _controller.dispose();
+//     super.dispose();
+//   }
 
-    // Start animation
-    _controller.forward().then((_) {
-      widget.onComplete();
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return Positioned(
-          top: widget.startPosition.dy + _slideAnimation.value.dy * widget.startSize.height,
-          left: widget.startPosition.dx,
-          child: Transform.scale(
-            scale: _scaleAnimation.value,
-            child: Opacity(
-              opacity: _fadeAnimation.value,
-              child: SizedBox(
-                width: widget.startSize.width,
-                height: widget.startSize.height,
-                child: Card(
-                  elevation: 8,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(widget.item.iNDART ?? 'Unknown', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 8),
-                      Text('Quantity: ${widget.item.iNDQTEINV ?? 0}', style: const TextStyle(fontSize: 14)),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
+//   @override
+//   Widget build(BuildContext context) {
+//     return AnimatedBuilder(
+//       animation: _controller,
+//       builder: (_, __) {
+//         return Positioned(
+//           top: _positionAnimation.value.dy,
+//           left: _positionAnimation.value.dx,
+//           child: Transform.scale(
+//             scale: _scaleAnimation.value,
+//             child: Opacity(
+//               opacity: _fadeAnimation.value,
+//               child: Card(
+//                 elevation: 12,
+//                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+//                 child: Container(
+//                   width: widget.startSize.width,
+//                   height: widget.startSize.height,
+//                   decoration: BoxDecoration(
+//                     gradient: LinearGradient(
+//                       colors: [Colors.blueAccent.withOpacity(0.2), Colors.blueAccent.withOpacity(0.1)],
+//                       begin: Alignment.topLeft,
+//                       end: Alignment.bottomRight,
+//                     ),
+//                     borderRadius: BorderRadius.circular(16),
+//                     boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: Offset(0, 4))],
+//                   ),
+//                   child: Center(
+//                     child: Column(
+//                       mainAxisAlignment: MainAxisAlignment.center,
+//                       children: [
+//                         Icon(Icons.inventory_2, color: Colors.blueAccent, size: 32),
+//                         const SizedBox(height: 8),
+//                         Text(
+//                           widget.item.iNDART ?? 'Item',
+//                           style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87, fontSize: 16),
+//                         ),
+//                       ],
+//                     ),
+//                   ),
+//                 ),
+//               ),
+//             ),
+//           ),
+//         );
+//       },
+//     );
+//   }
+// }

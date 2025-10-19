@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import 'package:invontar/class/crud.dart';
 import 'package:invontar/constant/linkapi.dart';
+import 'package:invontar/controoler/login_controller.dart';
 import 'package:invontar/data/model/articles_model.dart';
 import 'package:invontar/data/model/exercice_model.dart';
 import 'package:invontar/data/model/dossei_model.dart';
@@ -13,6 +14,7 @@ import 'package:invontar/view/screen/login.dart';
 class HomeController extends GetxController {
   final Crud crud = Crud();
   final AppLink appLink = Get.find<AppLink>();
+  final LoginController loginController = Get.put(LoginController());
   List<InventaireEnteteModel> inventaireentetelist = <InventaireEnteteModel>[];
   RxBool isLoading = false.obs;
   RxBool isLoadingArticles = false.obs;
@@ -31,12 +33,11 @@ class HomeController extends GetxController {
   void onInit() {
     super.onInit();
     // Simulate fetching data from an API or database
-    user = Get.arguments['user'];
-    dossier = Get.arguments['dossier'];
-    exercice = Get.arguments['exercice'];
-    fetchSettings();
-    fetchInventaireEntete();
-    fetchArticles();
+    print("Home controller intializing ... ");
+    user = loginController.selectedUser.value;
+    dossier = loginController.selectedDossier.value;
+    exercice = loginController.selectedExercice.value;
+    onRefresh();
   }
 
   Future<void> fetchInventaireEntete() async {
@@ -44,10 +45,14 @@ class HomeController extends GetxController {
       isLoading.value = true;
 
       final response = await crud.get(appLink.getInventaireEnteteUrl(exercice!.eXEDATEDEB!.year, dossier!.dosBdd!));
+      print('response : $response');
 
       if (response.statusCode == 200) {
         inventaireentetelist = (response.body['inventaires'] as List).map((item) => InventaireEnteteModel.fromJson(item)).toList();
         print('✅ Loaded ${inventaireentetelist.length} inventory items');
+      }
+      if (response.statusCode == 404) {
+        inventaireentetelist = [];
       } else {
         throw Exception('Échec de la récupération des dossiers');
       }
@@ -65,6 +70,7 @@ class HomeController extends GetxController {
 
       final response = await crud.get(appLink.getSetting(dossier!.dosBdd!));
 
+      print('response : $response');
       if (response.statusCode == 200) {
         buySettings = BuySettings.fromJson(response.body['buy_settings']);
         sellSettings = SellSettings.fromJson(response.body['sell_settings']);
@@ -84,6 +90,8 @@ class HomeController extends GetxController {
       isLoadingArticles.value = true;
       await Future.delayed(const Duration(seconds: 2));
       final response = await crud.get(appLink.getArticlesUrl(dossier!.dosBdd!));
+      print('response : $response');
+
       if (response.statusCode == 200) {
         articles = (response.body['ARTICLESS'] as List).map((e) => ArticlesModel.fromJson(e)).toList();
         print('✅ Loaded ${articles.length} articles');
@@ -99,12 +107,14 @@ class HomeController extends GetxController {
   }
 
   Future<void> onRefresh() async {
+    print("refrech....");
+    await fetchSettings();
     await fetchInventaireEntete();
     await fetchArticles();
   }
 
   Future<void> onTapInventaire(InventaireEnteteModel inventaire) async {
-    Get.to(() => Details(), arguments: {'user': user, 'dossier': dossier, 'exercice': exercice, 'inventaire': inventaire});
+    Get.to(() => Details(), arguments: {'inventaire': inventaire});
   }
 
   void onLogout() {

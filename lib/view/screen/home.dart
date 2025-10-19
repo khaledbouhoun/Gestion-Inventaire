@@ -18,7 +18,28 @@ class Home extends StatelessWidget {
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
+
             actions: [
+              Padding(
+                padding: const EdgeInsets.only(right: 16, top: 8),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: controller.onRefresh,
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColor.white,
+                        border: Border.all(color: AppColor.primaryColor.withOpacity(0.3), width: 1),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [BoxShadow(color: AppColor.primaryColor.withOpacity(0.1), blurRadius: 12, offset: const Offset(0, 4))],
+                      ),
+                      child: const Icon(Icons.refresh_outlined, color: AppColor.primaryColor, size: 24),
+                    ),
+                  ),
+                ),
+              ),
               Padding(
                 padding: const EdgeInsets.only(right: 16, top: 8),
                 child: Material(

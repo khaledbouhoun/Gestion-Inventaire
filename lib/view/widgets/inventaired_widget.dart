@@ -103,9 +103,15 @@ class InventairedWidget extends StatelessWidget {
         children: [
           Icon(icon, size: 16, color: AppColor.primaryColor),
           const SizedBox(width: 6),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColor.primaryColor),
+          Flexible(
+            // 👈 make text flexible to respect available space
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColor.primaryColor),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+              softWrap: false,
+            ),
           ),
         ],
       ),

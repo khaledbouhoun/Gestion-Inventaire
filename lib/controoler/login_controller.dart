@@ -50,14 +50,6 @@ class LoginController extends GetxController {
     _initializeServerConfig();
   }
 
-  @override
-  void onClose() {
-    passwordController.dispose();
-    serverController.dispose();
-    portController.dispose();
-    super.onClose();
-  }
-
   // Initialize server configuration
   void _initializeServerConfig() {
     final savedServer = myServices.sharedPreferences.getString('server');
