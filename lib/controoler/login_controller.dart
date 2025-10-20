@@ -197,7 +197,9 @@ class LoginController extends GetxController {
 
       if (hashedPassword.toUpperCase() == selectedUser.value!.userPass!.toUpperCase()) {
         // _showSuccessSnackbar('Connexion réussie');
-
+        print(
+          "login ... user : ${selectedUser.value!.userLogin} dossie : ${selectedDossier.value!.dosBdd} exercice : ${selectedExercice.value!.eXEDATEDEB!.year} ",
+        );
         Get.off(
           () => Home(),
           arguments: {'user': selectedUser.value, 'dossier': selectedDossier.value, 'exercice': selectedExercice.value},

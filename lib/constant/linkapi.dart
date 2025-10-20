@@ -29,8 +29,8 @@ class AppLink extends GetxController {
   String getSetting(String base) => "${sretuen()}/Setting?Base=$base";
   String getuserUrl(String id) => "${sretuen()}/user?DosNo=$id&BaseSys=$basesys";
   String getArticlesUrl(String base) => "${sretuen()}/articles?Base=$base";
-  String getInventaireEnteteUrl(int annee, String base) => "${sretuen()}/inventaire?Base=$base&exerice=$annee";
-  String getInventaireDetailsUrl(String indno, String inddate, String base) =>
-      "${sretuen()}/INVENTAIRD?Base=$base&INDDATE=$inddate&INDNO=$indno";
+  String getInventaireEnteteUrl(int annee, String user, String base) => "${sretuen()}/inventaire?Base=$base&userlogin=$user&exerice=$annee";
+  String getInventaireDetailsUrl(String indno, String inddate, String user, String base) =>
+      "${sretuen()}/INVENTAIRD?Base=$base&INDDATE=$inddate&INDNO=$indno&userlogin=$user";
   String saveInventaireDetailsUrl(String base) => "${sretuen()}/INVENTAIRD?Base=$base";
 }

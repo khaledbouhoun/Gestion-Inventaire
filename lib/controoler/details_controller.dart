@@ -46,6 +46,7 @@ class DetailsController extends GetxController {
   // ========== Text Controllers ==========
   String expression = '';
   final TextEditingController quantityController = TextEditingController();
+  String quantityHideText = '';
   final TextEditingController longController = TextEditingController();
   final TextEditingController largController = TextEditingController();
 
@@ -116,7 +117,7 @@ class DetailsController extends GetxController {
       update();
 
       final response = await crud.get(
-        appLink.getInventaireDetailsUrl(inventaire!.ineno!, inventaire!.inedate!.toIso8601String(), dossier!.dosBdd!),
+        appLink.getInventaireDetailsUrl(inventaire!.ineno!, inventaire!.inedate!.toIso8601String(), user!.userLogin!, dossier!.dosBdd!),
       );
 
       if (response.statusCode == 200) {
@@ -154,12 +155,10 @@ class DetailsController extends GetxController {
       largController.clear();
     } else {
       InventairedModel inventaireDetaileListFirst = inventaireDetaileList.firstWhere((e) => e.iNDART == article.artno);
-      if (inventaireDetaileList.where((e) => e.iNDART == article.artno).isEmpty) {
       updateMethode = true;
-      quantityController.text = inventaireDetaileListFirst.iNDQTEINV.toString();
+      quantityHideText = inventaireDetaileListFirst.iNDQTEINV.toString();
       longController.text = inventaireDetaileListFirst.iNDLONG.toString();
       largController.text = inventaireDetaileListFirst.iNDLARG.toString();
-    }
     }
 
     update();
@@ -168,6 +167,10 @@ class DetailsController extends GetxController {
   /// Clear the selected article and reset form
   void clearSelection() {
     selectedArticle.value = null;
+    quantityController.clear();
+    longController.clear();
+    largController.clear();
+    quantityHideText = '';
     searchQuery = '';
     filteredArticles = [];
     update();
@@ -381,9 +384,9 @@ class DetailsController extends GetxController {
   // ========== Save Inventory Item ==========
 
   /// Validate and save the inventory item
-  Future<void> saveInventoryItem() async {
+  Future<void> saveInventoryItem(bool replace) async {
     print("is TYPIN1j");
-    if (formState.currentState!.validate()) {
+    
       // Validation
       print("is TYPING");
       if (!_validateBeforeSave()) return;
@@ -392,15 +395,74 @@ class DetailsController extends GetxController {
       update();
 
       try {
-        await _submitInventoryItem();
-        // _onSaveSuccess();
+        Map<String, dynamic> data = {};
+        // Verify that the inventory header is not closed or removed
+
+        bool inventaireStillOpen = false;
+        await homeController.fetchInventaireEntete().then((s) {
+          inventaireStillOpen = homeController.inventaireentetelist.any(
+            (inv) => (inv.ineno == inventaire!.ineno) && (inv.inedate == inventaire!.inedate),
+          );
+        });
+
+        if (!inventaireStillOpen) {
+          print("⚠️ This inventory is closing...");
+          _showInfoSnackbar("This inventory is closing");
+          Get.offAll(() {
+            Get.delete<HomeController>(); // حذف أي نسخة قديمة
+            return Home();
+          });
+
+          return; // ⛔ مهم لإيقاف الدالة هنا
+        }
+
+        // ✅ الجرد مازال مفتوحاً، أكمل العملية هنا...
+
+        if (updateMethode) {
+          InventairedModel inventairedModel = inventaireDetaileList.firstWhere((element) => element.iNDART == selectedArticle.value!.artno);
+          inventairedModel.iNDLONG = double.parse(longController.text);
+          inventairedModel.iNDLARG = double.parse(largController.text);
+          inventairedModel.iNDQTEINV = replace ? double.parse(quantityController.text) : _calculateQty(inventairedModel.iNDQTEINV!);
+          inventairedModel.iNDQTEDIFF = inventairedModel.iNDQTEINV! - inventairedModel.iNDQTETHEOR!;
+          inventairedModel.iNDMONTANT = replace
+              ? _calculateMontant(double.parse(quantityController.text), inventairedModel.iNDPU!)
+              : _calculateMontant(inventairedModel.iNDQTEINV!, inventairedModel.iNDPU!);
+          inventairedModel.iNDQTEEXPR = replace ? quantityController.text : _calculateExpression(inventairedModel.iNDQTEEXPR!);
+          inventairedModel.iNDMNTDIFF = inventairedModel.iNDMONTANT! - inventairedModel.iNDMNTTHEOR!;
+          inventairedModel.iNDQTEINVG = _calculateqtySurface();
+          data = inventairedModel.toJson();
+          data.addAll({"updateMethode": updateMethode.toString()});
+        } else {
+          final item = _prepareInventorData();
+          data = item.toJson();
+          data.addAll({
+            "updateMethode": updateMethode.toString(),
+            "artpap": selectedArticle.value!.artpap,
+            "artcompo2": selectedArticle.value!.artcompo2,
+            "inetypecout": inventaire!.inetypecout,
+            "PrmCalculPrixTTC": buySettings!.prmCalculPrixTTC,
+            "PrmMajStk": sellSettings!.pRMMAJSTK,
+            "PrmConsomMatPrem2": sellSettings!.pRMCONSOMMATPREM2,
+            "PrmDepotDefautTourneeAB": sellSettings!.pRMDEPOTDEFAUTTOURNEEAB,
+          });
+        }
+        print(data);
+
+        final response = await crud.post(appLink.saveInventaireDetailsUrl(dossier!.dosBdd!), data);
+
+        if (response.statusCode == 201) {
+          // // _showSuccessSnackbar('Inventory item saved successfully');
+          // inventaireDetaileList.add(item);
+          clearSelection();
+          fetchInventaired();
+        }
       } catch (e) {
         _onSaveError(e);
       } finally {
         isSaving.value = false;
         update();
       }
-    }
+    
   }
 
   bool _validateBeforeSave() {
@@ -435,68 +497,6 @@ class DetailsController extends GetxController {
     return true;
   }
 
-  Future<void> _submitInventoryItem() async {
-    Map<String, dynamic> data = {};
-    // Verify that the inventory header is not closed or removed
-
-    bool inventaireStillOpen = false;
-    await homeController.fetchInventaireEntete().then((s) {
-      inventaireStillOpen = homeController.inventaireentetelist.any(
-        (inv) => (inv.ineno == inventaire!.ineno) && (inv.inedate == inventaire!.inedate),
-      );
-    });
-
-    if (!inventaireStillOpen) {
-      print("⚠️ This inventory is closing...");
-      _showInfoSnackbar("This inventory is closing");
-      Get.offAll(() {
-        Get.delete<HomeController>(); // حذف أي نسخة قديمة
-        return Home();
-      });
-
-      return; // ⛔ مهم لإيقاف الدالة هنا
-    }
-
-    // ✅ الجرد مازال مفتوحاً، أكمل العملية هنا...
-
-    if (updateMethode) {
-      InventairedModel inventairedModel = inventaireDetaileList.firstWhere((element) => element.iNDART == selectedArticle.value!.artno);
-      inventairedModel.iNDLONG = double.parse(longController.text);
-      inventairedModel.iNDLARG = double.parse(largController.text);
-      inventairedModel.iNDQTEINV = _calculateQty(inventairedModel.iNDQTEINV!);
-      inventairedModel.iNDQTEDIFF = inventairedModel.iNDQTEINV! - inventairedModel.iNDQTETHEOR!;
-      inventairedModel.iNDMONTANT = _calculateMontant(inventairedModel.iNDQTEINV!, inventairedModel.iNDPU!);
-      inventairedModel.iNDQTEEXPR = _calculateExpression(inventairedModel.iNDQTEEXPR!);
-      inventairedModel.iNDMNTDIFF = inventairedModel.iNDMONTANT! - inventairedModel.iNDMNTTHEOR!;
-      inventairedModel.iNDQTEINVG = _calculateqtySurface();
-      data = inventairedModel.toJson();
-      data.addAll({"updateMethode": updateMethode.toString()});
-    } else {
-      final item = _prepareInventoryData();
-      data = item.toJson();
-      data.addAll({
-        "updateMethode": updateMethode.toString(),
-        "artpap": selectedArticle.value!.artpap,
-        "artcompo2": selectedArticle.value!.artcompo2,
-        "inetypecout": inventaire!.inetypecout,
-        "PrmCalculPrixTTC": buySettings!.prmCalculPrixTTC,
-        "PrmMajStk": sellSettings!.pRMMAJSTK,
-        "PrmConsomMatPrem2": sellSettings!.pRMCONSOMMATPREM2,
-        "PrmDepotDefautTourneeAB": sellSettings!.pRMDEPOTDEFAUTTOURNEEAB,
-      });
-    }
-    print(data);
-
-    final response = await crud.post(appLink.saveInventaireDetailsUrl(dossier!.dosBdd!), data);
-
-    if (response.statusCode == 201) {
-      // // _showSuccessSnackbar('Inventory item saved successfully');
-      // inventaireDetaileList.add(item);
-      clearSelection();
-      fetchInventaired();
-    }
-  }
-
   int _calculateOrder() {
     if (inventaireDetaileList.isEmpty) return 1;
     final maxOrd = inventaireDetaileList.map((e) => e.iNDORD ?? 0).reduce((a, b) => a > b ? a : b);
@@ -526,7 +526,7 @@ class DetailsController extends GetxController {
   double _calculateqtySurface() {
     switch (selectedArticle.value!.artvtepar) {
       case 0:
-        return double.parse(quantityController.text);
+        return 0.0;
       case 1:
         return (double.parse(longController.text) + double.parse(largController.text)) * 2;
       case 2:
@@ -536,7 +536,7 @@ class DetailsController extends GetxController {
     }
   }
 
-  InventairedModel _prepareInventoryData() {
+  InventairedModel _prepareInventorData() {
     return InventairedModel(
       iNDDATE: inventaire!.inedate,
       iNDNO: inventaire!.ineno,

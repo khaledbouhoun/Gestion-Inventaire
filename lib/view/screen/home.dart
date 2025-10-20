@@ -77,7 +77,7 @@ class Home extends StatelessWidget {
                       ? Center(
                           child: const Text(
                             textAlign: TextAlign.center,
-                            'Aucun inventaire \nouvert trouvé',
+                            'Aucun inventaire \nouvert trouvé pour \nVous',
                             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColor.black, letterSpacing: -0.5),
                           ),
                         )

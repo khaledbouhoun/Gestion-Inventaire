@@ -144,7 +144,13 @@ class Details extends StatelessWidget {
     );
   }
 
-  Widget _buildInputField({required TextEditingController controller, required String label, required IconData icon, String? suffix}) {
+  Widget _buildInputField({
+    required TextEditingController controller,
+    String quantityHideText = '',
+    required String label,
+    required IconData icon,
+    String? suffix,
+  }) {
     return Container(
       decoration: BoxDecoration(
         color: AppColor.white,
@@ -162,9 +168,14 @@ class Details extends StatelessWidget {
           return null;
         },
         inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^[-+]?\d*\.?\d{0,2}$'))],
+        cursorColor: AppColor.primaryColor,
 
         style: const TextStyle(color: AppColor.primaryColor, fontWeight: FontWeight.w600, fontSize: 16),
         decoration: InputDecoration(
+          hint: Text(
+            quantityHideText,
+            style: TextStyle(color: const Color.fromARGB(255, 143, 175, 185), fontWeight: FontWeight.w600, fontSize: 16),
+          ),
           labelText: label,
           suffixText: suffix,
           suffixStyle: TextStyle(color: AppColor.primaryColor.withOpacity(0.6), fontWeight: FontWeight.w500),
@@ -197,58 +208,6 @@ class Details extends StatelessWidget {
       ),
     );
   }
-
-  // void _handleSaveWithAnimation(
-  //   BuildContext context,
-  //   DetailsController controller, {
-  //   required GlobalKey startKey,
-  //   required GlobalKey endKey,
-  // }) async {
-  //   if (controller.selectedArticle.value == null) return;
-
-  //   final newItem = InventairedModel(
-  //     iNDART: controller.selectedArticle.value?.artno,
-  //     iNDQTEINV: double.tryParse(controller.quantityController.text.isEmpty ? '0' : controller.quantityController.text),
-  //     iNDLONG: double.tryParse(controller.longController.text.isEmpty ? '0' : controller.longController.text),
-  //     iNDLARG: double.tryParse(controller.largController.text.isEmpty ? '0' : controller.largController.text),
-  //     iNDDH: DateTime.now(),
-  //   );
-
-  //   final RenderBox? startBox = startKey.currentContext?.findRenderObject() as RenderBox?;
-  //   final RenderBox? endBox = endKey.currentContext?.findRenderObject() as RenderBox?;
-
-  //   if (startBox == null || endBox == null) {
-  //     controller.saveInventoryItem();
-  //     return;
-  //   }
-
-  //   print("---------------------------------------0");
-  //   final startPos = startBox.localToGlobal(Offset.zero);
-  //   final endPos = endBox.localToGlobal(Offset.zero);
-
-  //   final overlay = Overlay.of(context);
-  //   late OverlayEntry entry;
-
-  //   entry = OverlayEntry(
-  //     builder: (_) => _AnimatedCardFly(
-  //       startPosition: startPos,
-  //       endPosition: endPos,
-  //       startSize: startBox.size,
-  //       item: newItem,
-  //       onComplete: () async {
-  //         print("---------------------------------------1");
-
-  //         entry.remove();
-  //       },
-  //     ),
-  //   );
-  //   print("---------------------------------------2");
-  //   await controller.saveInventoryItem();
-  //   if (controller.isSaving.value == false) {
-  //     overlay.insert(entry);
-  //   }
-  //   print("---------------------------------------3");
-  // }
 
   Widget _buildSelectedArticleCard(DetailsController controller) {
     return Container(
@@ -344,7 +303,13 @@ class Details extends StatelessWidget {
           Form(
             key: controller.formState,
 
-            child: _buildInputField(controller: controller.quantityController, label: 'Quantity', icon: Icons.inventory, suffix: 'units'),
+            child: _buildInputField(
+              controller: controller.quantityController,
+              quantityHideText: controller.quantityHideText,
+              label: 'Quantity',
+              icon: Icons.inventory,
+              suffix: 'units',
+            ),
           ),
           const SizedBox(height: 16),
           Visibility(
@@ -371,9 +336,39 @@ class Details extends StatelessWidget {
               child: ElevatedButton(
                 onPressed: () async {
                   // _handleSaveWithAnimation(context, controller, startKey: _cardStartKey, endKey: _listTargetKey);
-                  await controller.saveInventoryItem();
-                  controller.clearSelection();
-                  await controller.fetchInventaired();
+                  if (controller.formState.currentState!.validate()) {
+                    if (controller.updateMethode) {
+                      Get.defaultDialog(
+                        backgroundColor: AppColor.white,
+                        title: "Modifier ou Remplacer",
+                        titleStyle: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColor.primaryColor),
+                        middleText: "Voulez-vous remplacer la valeur ou simplement la modifier ?",
+                        middleTextStyle: TextStyle(fontSize: 16, color: AppColor.primaryColor.withOpacity(0.8)),
+                        textConfirm: "Remplacer",
+                        textCancel: "Modifier",
+                        confirmTextColor: Colors.white,
+                        cancelTextColor: AppColor.primaryColor,
+                        buttonColor: AppColor.primaryColor,
+                        barrierDismissible: true,
+                        titlePadding: EdgeInsets.all(20),
+                        radius: 12,
+                        onConfirm: () async {
+                          await controller.saveInventoryItem(true);
+                          controller.clearSelection();
+                          await controller.fetchInventaired();
+                        },
+                        onCancel: () async {
+                          await controller.saveInventoryItem(false);
+                          controller.clearSelection();
+                          await controller.fetchInventaired();
+                        },
+                      );
+                    } else {
+                      await controller.saveInventoryItem(false);
+                      controller.clearSelection();
+                      await controller.fetchInventaired();
+                    }
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColor.primaryColor,
@@ -430,101 +425,3 @@ class Details extends StatelessWidget {
     );
   }
 }
-
-// // Animation Widget
-// class _AnimatedCardFly extends StatefulWidget {
-//   final Offset startPosition;
-//   final Offset endPosition;
-//   final Size startSize;
-//   final InventairedModel item;
-//   final VoidCallback onComplete;
-
-//   const _AnimatedCardFly({
-//     required this.startPosition,
-//     required this.endPosition,
-//     required this.startSize,
-//     required this.item,
-//     required this.onComplete,
-//   });
-
-//   @override
-//   State<_AnimatedCardFly> createState() => _AnimatedCardFlyState();
-// }
-
-// class _AnimatedCardFlyState extends State<_AnimatedCardFly> with SingleTickerProviderStateMixin {
-//   late AnimationController _controller;
-//   late Animation<Offset> _positionAnimation;
-//   late Animation<double> _scaleAnimation;
-//   late Animation<double> _fadeAnimation;
-//   @override
-//   void initState() {
-//     super.initState();
-//     _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
-
-//     _positionAnimation = Tween<Offset>(
-//       begin: widget.startPosition,
-//       end: widget.endPosition,
-//     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOutCubic));
-
-//     _scaleAnimation = Tween<double>(begin: 1.0, end: 0.4).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-
-//     _fadeAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
-
-//     _controller.forward().then((_) => widget.onComplete());
-//   }
-
-//   @override
-//   void dispose() {
-//     _controller.dispose();
-//     super.dispose();
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return AnimatedBuilder(
-//       animation: _controller,
-//       builder: (_, __) {
-//         return Positioned(
-//           top: _positionAnimation.value.dy,
-//           left: _positionAnimation.value.dx,
-//           child: Transform.scale(
-//             scale: _scaleAnimation.value,
-//             child: Opacity(
-//               opacity: _fadeAnimation.value,
-//               child: Card(
-//                 elevation: 12,
-//                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-//                 child: Container(
-//                   width: widget.startSize.width,
-//                   height: widget.startSize.height,
-//                   decoration: BoxDecoration(
-//                     gradient: LinearGradient(
-//                       colors: [Colors.blueAccent.withOpacity(0.2), Colors.blueAccent.withOpacity(0.1)],
-//                       begin: Alignment.topLeft,
-//                       end: Alignment.bottomRight,
-//                     ),
-//                     borderRadius: BorderRadius.circular(16),
-//                     boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: Offset(0, 4))],
-//                   ),
-//                   child: Center(
-//                     child: Column(
-//                       mainAxisAlignment: MainAxisAlignment.center,
-//                       children: [
-//                         Icon(Icons.inventory_2, color: Colors.blueAccent, size: 32),
-//                         const SizedBox(height: 8),
-//                         Text(
-//                           widget.item.iNDART ?? 'Item',
-//                           style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87, fontSize: 16),
-//                         ),
-//                       ],
-//                     ),
-//                   ),
-//                 ),
-//               ),
-//             ),
-//           ),
-//         );
-//       },
-//     );
-//   }
-// }
