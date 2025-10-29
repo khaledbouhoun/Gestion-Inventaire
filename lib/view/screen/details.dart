@@ -354,6 +354,7 @@ class Details extends StatelessWidget {
                         radius: 12,
                         onConfirm: () async {
                           await controller.saveInventoryItem(true);
+                          Get.back();
                           controller.clearSelection();
                           await controller.fetchInventaired();
                         },
